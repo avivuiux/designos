@@ -76,9 +76,13 @@ What turns a pile of prompts into a system you can trust:
 - **Quoted vs inferred** - the reader never blends fact with guess. "Not found" and "I don't know" are legitimate, respected answers.
 - **Progressive disclosure** - the orchestrator doesn't dump all of its power at once; it surfaces what you need to decide, when you need to decide it.
 
-## What's next (honest)
+## What's next: the design layer
 
-Adaptive method-routing (the north-star): a layer above the fixed workflow that picks the *right process for the problem* - a method-selector and a gestalt-critic. Deliberately gated until the core is demo-ready. The discipline is **depth before breadth**: excellent at one thing first, then widen. Width-first is the trap these tools die in.
+The system specs today - it lives at the front of the funnel. The next step extends it into design, and the heart of that isn't "AI that designs for you." It's **the display of the insights**: taking the output of a deep-spec and organizing it - the insights, and their indications (confidence, source, what's still unverified) - into a comfortable visual surface where a designer actually reaches a decision. The taste stays mine; the system organizes the thinking so the decision is easy to make.
+
+The first producer agent is already built and validated across two live runs: `insight-mapper` takes a finished spec and returns 2-3 distinct, complete design directions - each a full insight-map grouped by level (strategic / tactical), with a founding thesis and two-way traceability back to the findings. A thinking-partner that hands you a space to decide in, not a single answer to accept.
+
+Generating the visual work itself - the design-execution stage - comes after that. It feels necessary, but it's deliberately not first. Above it all sits adaptive method-routing: the right process for the problem (a gestalt-critic is one small skill here, not the headline). The discipline throughout is **depth before breadth** - excellent at one thing first, then widen.
 
 ---
 
