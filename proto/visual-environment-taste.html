@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design OS — הבית (פרויקט → מאמצים → חדרים)</title>
+<style>
+  :root{
+    --bg:#f3f4f7; --panel:#ffffff; --ink:#1c2024; --muted:#6b7280; --faint:#9aa1ad;
+    --line:#e7e9ef; --line-strong:#d6d9e0;
+    --accent:#5b5bd6; --accent-soft:#ededfc;
+    --ripen:#d97706; --ripen-soft:#fef3e2;
+    --stuck:#6b7280; --stuck-soft:#f1f2f4;
+    --decided:#0d9488; --decided-soft:#e0f2f1;
+    --blue:#2563eb; --blue-soft:#e8effd;
+    --radius:16px; --shadow:0 1px 2px rgba(20,25,40,.04),0 6px 22px rgba(20,25,40,.06);
+    --rail:218px; --rail-c:60px; --ctx:240px;
+    font-family:-apple-system,"Segoe UI",Rubik,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
+  button{font-family:inherit}
+  .app{display:flex;min-height:100vh}
+
+  /* TIER 1 — stable rail: project nav (home + efforts + heart) */
+  .rail{width:var(--rail);flex:none;background:#15161c;color:#cfd2da;display:flex;flex-direction:column;
+    position:sticky;top:0;height:100vh;transition:width .18s;z-index:30}
+  .rail.collapsed{width:var(--rail-c)}
+  .rail .rtop{padding:14px 14px 10px;border-bottom:1px solid #262833}
+  .rail .brand{display:flex;align-items:center;gap:8px;font-weight:800;color:#fff;font-size:15px;margin-bottom:11px}
+  .rail .brand .dot{width:11px;height:11px;border-radius:4px;background:var(--accent);flex:none}
+  .rail .proj{display:flex;align-items:center;gap:7px;background:#23252f;border:1px solid #2e313d;border-radius:9px;
+    padding:7px 10px;font-size:12.5px;font-weight:600;color:#e7e8ee;cursor:pointer}
+  .rail .proj .sw{margin-inline-start:auto;color:var(--faint)}
+  .rail .search{margin:10px 14px 4px;background:#23252f;border:1px solid #2e313d;border-radius:9px;
+    padding:7px 11px;font-size:12px;color:#8b8fa0;cursor:text}
+  .rail .nav{padding:8px;flex:1;overflow-y:auto}
+  .rail .sec{font-size:10px;font-weight:800;color:#62677a;letter-spacing:.5px;padding:12px 10px 5px}
+  .rail .item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;cursor:pointer;
+    color:#cfd2da;font-size:12.5px;font-weight:600;transition:.12s;white-space:nowrap;overflow:hidden}
+  .rail .item:hover{background:#23252f;color:#fff}
+  .rail .item.active{background:var(--accent);color:#fff}
+  .rail .item .ic{width:20px;text-align:center;flex:none;font-size:13px}
+  .rail .item .nm{flex:1;overflow:hidden;text-overflow:ellipsis}
+  .rail .item .st{width:8px;height:8px;border-radius:50%;flex:none}
+  .st.ripen{background:var(--ripen)} .st.new{background:var(--blue)} .st.stuck{background:#7b8190} .st.go{background:var(--decided)}
+  .rail .heart{margin:8px;padding:10px;border-radius:11px;background:linear-gradient(135deg,#3a2a12,#2a1f10);
+    border:1px solid #4a3a1c;cursor:pointer}
+  .rail .heart .ht{display:flex;align-items:center;gap:8px;font-weight:800;color:#fbbf6b;font-size:12.5px}
+  .rail .heart .hs{font-size:11px;color:#cbab7e;margin-top:3px}
+  .rail.collapsed .nm,.rail.collapsed .proj span:not(.sw),.rail.collapsed .search,
+  .rail.collapsed .sec,.rail.collapsed .heart .hs,.rail.collapsed .brand span:not(.dot){display:none}
+  .rail .collapse{border:none;background:#23252f;color:#cfd2da;border-radius:8px;padding:7px;margin:8px;cursor:pointer;font-size:13px}
+
+  /* TIER 2 — contextual panel: the active effort's rooms */
+  .ctx{width:var(--ctx);flex:none;background:#fbfbfd;border-inline-end:1px solid var(--line);
+    position:sticky;top:0;height:100vh;overflow-y:auto;display:none}
+  .ctx.show{display:block}
+  .ctx .cxh{padding:16px 16px 8px}
+  .ctx .cxh .back{font-size:11.5px;color:var(--accent);cursor:pointer;font-weight:700}
+  .ctx .cxh h3{font-size:14px;margin:8px 0 2px}
+  .ctx .cxh .nat{font-size:11px;color:var(--faint)}
+  .ctx .cxsec{font-size:10px;font-weight:800;color:var(--faint);letter-spacing:.4px;padding:14px 16px 4px}
+  .ctx .ritem{display:flex;align-items:center;gap:9px;padding:8px 16px;cursor:pointer;font-size:12.5px;border-inline-start:2px solid transparent}
+  .ctx .ritem:hover{background:#f0f0f6}
+  .ctx .ritem.active{background:#ececfb;border-inline-start-color:var(--accent);font-weight:700}
+  .ctx .ritem .rn{font-size:10px;font-weight:800;color:#fff;background:var(--accent);border-radius:5px;padding:1px 5px;flex:none}
+  .ctx .ritem .st{width:7px;height:7px;border-radius:50%;margin-inline-start:auto;flex:none}
+  .ctx .anchor{display:flex;align-items:center;gap:9px;padding:7px 16px 7px 26px;cursor:pointer;font-size:12px;color:var(--muted)}
+  .ctx .anchor:hover{background:#f0f0f6}
+  .ctx .anchor .dot{width:6px;height:6px;border-radius:50%;background:var(--accent-soft);border:1px solid #c9c9ef;flex:none}
+  .ctx .anchor .dot.ripen{background:var(--ripen);border-color:var(--ripen)}
+
+  /* MAIN */
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .crumb{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.85);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);padding:12px 24px;display:flex;align-items:center;gap:10px;font-size:13px}
+  .crumb .path{color:var(--muted)} .crumb .path b{color:var(--ink)} .crumb .path .sep{color:var(--faint);margin:0 4px}
+  .crumb .localgoal{font-size:12px;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:4px 12px;font-weight:600}
+  .avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#5b5bd6,#8a8af0);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;margin-inline-start:auto}
+  .scroll{padding:22px 24px 60px;overflow-y:auto}
+  .view{display:none} .view.show{display:block}
+
+  .greet{display:flex;align-items:baseline;justify-content:space-between;margin:2px 2px 18px}
+  .greet h1{font-size:20px;margin:0;font-weight:800}
+  .greet .when{font-size:12.5px;color:var(--muted)}
+  .cols{display:grid;grid-template-columns:1.85fr 1fr;gap:18px;align-items:start}
+  @media(max-width:980px){.cols{grid-template-columns:1fr}}
+  .stack{display:flex;flex-direction:column;gap:18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .card .ch{display:flex;align-items:center;gap:8px;padding:14px 16px 0}
+  .card .ch h2{font-size:13px;margin:0;font-weight:800}
+  .card .ch .count{font-size:11px;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:1px 8px}
+  .card .cb{padding:12px 16px 16px}
+  .resume{background:linear-gradient(135deg,#5b5bd6,#7a6ff0);color:#fff;border:none}
+  .resume .cb{padding:18px}
+  .resume .lbl{font-size:11.5px;opacity:.85;font-weight:700;margin-bottom:6px}
+  .resume h3{margin:0 0 4px;font-size:21px}
+  .resume .meta{font-size:12.5px;opacity:.9}
+  .resume .gl{font-size:12.5px;opacity:.92;margin-top:8px;border-top:1px solid rgba(255,255,255,.25);padding-top:8px}
+  .resume .go{margin-top:14px;background:#fff;color:var(--accent);border:none;border-radius:11px;padding:10px 18px;font-weight:800;font-size:14px;cursor:pointer}
+  .act{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .act:last-child{border-bottom:none}
+  .act .ico{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:15px;flex:none}
+  .ico.ripen{background:var(--ripen-soft)} .ico.method{background:var(--accent-soft)} .ico.fb{background:var(--blue-soft)} .ico.name{background:#f3e8ff}
+  .act .txt{flex:1;min-width:0} .act .txt b{font-weight:700;font-size:13.5px} .act .txt .s{font-size:11.5px;color:var(--muted)}
+  .act .do{border:1px solid var(--line-strong);background:#fff;border-radius:9px;padding:6px 13px;font-weight:700;font-size:12.5px;cursor:pointer;white-space:nowrap}
+  .act .do.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+  /* efforts grid */
+  .efforts{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  @media(max-width:980px){.efforts{grid-template-columns:1fr}}
+  .etile{border:1px solid var(--line);border-radius:13px;padding:14px;cursor:pointer;transition:.15s;background:#fff}
+  .etile:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow)}
+  .etile.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+  .etile .et-head{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+  .etile .ename{font-weight:800;font-size:14px}
+  .etile .badge{margin-inline-start:auto}
+  .etile .egoal{font-size:11.5px;color:var(--muted);min-height:32px}
+  .etile .efoot{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:11px;color:var(--faint)}
+  .etile .bar{flex:1;height:6px;border-radius:4px;background:var(--line);overflow:hidden}
+  .etile .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#8a8af0)}
+  .badge{font-size:10px;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap}
+  .b-stuck{background:var(--stuck-soft);color:#4b5563} .b-ripen{background:var(--ripen-soft);color:var(--ripen)}
+  .b-decided{background:var(--decided-soft);color:var(--decided)} .b-new{background:var(--blue-soft);color:var(--blue)}
+  .b-live{background:#dcfce7;color:#15803d} .b-ref{background:#f3e8ff;color:#7e22ce}
+
+  /* rooms grid (effort view) */
+  .rooms{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media(max-width:980px){.rooms{grid-template-columns:repeat(2,1fr)}}
+  .rtile{border:1px solid var(--line);border-radius:12px;padding:11px;cursor:pointer;transition:.15s;background:#fff}
+  .rtile:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .rtile.skip{opacity:.5;border-style:dashed;cursor:default}
+  .rtile.skip:hover{transform:none;border-color:var(--line)}
+  .rtile .rt-head{display:flex;align-items:center;gap:7px;margin-bottom:3px}
+  .rtile .rn{font-size:10.5px;font-weight:800;color:#fff;background:var(--accent);border-radius:6px;padding:1px 6px}
+  .rtile.skip .rn{background:var(--faint)}
+  .rtile .rname{font-weight:700;font-size:13px}
+  .rtile .rgoal{font-size:11px;color:var(--muted);min-height:30px}
+  .rtile .rgoal .tag{color:var(--faint);font-weight:700;font-size:9.5px;display:block}
+  .rtile .rfoot{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+  .rtile .cnt{font-size:11px;color:var(--muted)}
+
+  .feed .ev{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .feed .ev:last-child{border-bottom:none}
+  .ev .tl{display:flex;flex-direction:column;align-items:center;flex:none;width:12px}
+  .ev .tl .d{width:9px;height:9px;border-radius:50%;background:var(--accent);margin-top:4px}
+  .ev .tl .d.ripen{background:var(--ripen)} .ev .tl .d.fb{background:var(--blue)} .ev .tl .d.done{background:var(--decided)}
+  .ev .tl .line{flex:1;width:2px;background:var(--line);margin-top:3px}
+  .ev:last-child .tl .line{display:none}
+  .ev .ec b{font-weight:700;font-size:13px} .ev .ec .s{font-size:11.5px;color:var(--muted)} .ev .ec .t{font-size:10.5px;color:var(--faint);margin-top:2px}
+
+  /* room natural views */
+  .room-wrap{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;min-height:380px}
+  .rv-canvas{position:relative;height:340px;background:#fafbfc;border:1px dashed var(--line-strong);border-radius:12px}
+  .note{position:absolute;background:#fff7d6;border:1px solid #ecd97a;border-radius:6px;font-size:12px;padding:8px 10px;box-shadow:0 1px 3px rgba(0,0,0,.08);max-width:165px;color:#6b5d18;cursor:grab}
+  .note.hl{outline:2px solid var(--accent);outline-offset:2px}
+  .rv-tree{font-size:14px}
+  .rv-tree .root{font-weight:800;font-size:15px;margin-bottom:10px}
+  .rv-tree .leaf{margin-inline-start:22px;padding:9px 0;display:flex;align-items:center;gap:9px;border-bottom:1px solid var(--line)}
+  .rv-tree .leaf .idot{width:9px;height:9px;border-radius:50%;background:var(--ripen);flex:none}
+  .rv-tree .leaf .src{margin-inline-start:auto;font-size:11px;color:var(--accent)}
+  .rv-list .screen{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:11px;margin-bottom:9px;background:#fafbfc}
+  .rv-list .screen .sq{width:40px;height:30px;border-radius:5px;background:var(--accent-soft);border:1px solid #dcdcf6;flex:none}
+  .rv-dirs{display:flex;gap:14px;flex-wrap:wrap}
+  .rv-dirs .dir{flex:1;min-width:150px;border:1px solid var(--line);border-radius:12px;padding:14px;background:#fafbfc}
+  .rv-dirs .dir.win{border-color:var(--decided);background:var(--decided-soft)}
+  .rv-dirs .dir .dt{font-weight:800;margin-bottom:6px}
+  .rv-note{font-size:14px;line-height:1.7;color:var(--ink)}
+  .rv-note .lab{font-size:11px;font-weight:800;color:var(--faint);letter-spacing:.4px;display:block;margin-bottom:6px}
+
+  .footnote{margin:22px 2px 0;font-size:11.5px;color:var(--muted);line-height:1.8}
+  .footnote code{background:#e8eaef;padding:1px 6px;border-radius:5px} .footnote b{color:var(--ink)}
+
+  .scrim{position:fixed;inset:0;background:rgba(20,25,40,.45);z-index:60;display:none;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(2px)}
+  .scrim.open{display:flex}
+  .decide-card{background:#fff;border-radius:18px;max-width:560px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.3);overflow:hidden}
+  .dc-head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+  .dc-head .h7{font-size:11px;font-weight:800;color:#fff;background:var(--ripen);border-radius:6px;padding:2px 7px}
+  .dc-head h2{font-size:16px;margin:0}
+  .dc-head .x{margin-inline-start:auto;border:none;background:none;font-size:22px;cursor:pointer;color:var(--muted)}
+  .dc-body{padding:18px 22px} .dc-body .lead{font-size:12.5px;color:var(--muted);margin-bottom:12px}
+  .rec{border:1px solid var(--decided);background:var(--decided-soft);border-radius:12px;padding:14px}
+  .rec .rtag{font-size:11px;font-weight:800;color:var(--decided)} .rec h3{margin:4px 0 8px;font-size:16px}
+  .rec ul{margin:0;padding-inline-start:18px;font-size:12.5px;color:#1f3b38} .rec ul li{margin-bottom:3px}
+  .alt{margin-top:12px;font-size:12px;color:var(--muted)}
+  .dc-foot{padding:14px 22px;border-top:1px solid var(--line);display:flex;gap:10px}
+  .dc-foot button{border-radius:10px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer;border:1px solid var(--line-strong);background:#fff}
+  .dc-foot .primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TIER 1: stable rail -->
+  <nav class="rail" id="rail">
+    <div class="rtop">
+      <div class="brand"><span class="dot"></span><span>Design OS</span></div>
+      <div class="proj" onclick="alert('מתג-פרויקטים: Design OS · PriceMatch · אתר-התיק')"><span>Design OS</span><span class="sw">▾</span></div>
+    </div>
+    <div class="search" onclick="alert('חיפוש על-פני מאמצים, חדרים, תובנות')">🔍 חיפוש…</div>
+    <div class="nav">
+      <div class="item active" data-eff="home" onclick="go('home')"><span class="ic">⌂</span><span class="nm">בית</span></div>
+      <div class="sec">מאמצי-העיצוב</div>
+      <div id="rail-efforts"></div>
+    </div>
+    <div class="heart" onclick="openDecide()">
+      <div class="ht">◆ הלב · תצוגת-התובנות</div>
+      <div class="hs">2 מבשילות · בוא נכריע</div>
+    </div>
+    <button class="collapse" onclick="document.getElementById('rail').classList.toggle('collapsed')">⇆ כווץ</button>
+  </nav>
+
+  <!-- TIER 2: contextual panel -->
+  <aside class="ctx" id="ctx"></aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="crumb">
+      <span class="path" id="crumb">בית</span>
+      <span class="localgoal" id="localgoal" style="display:none"></span>
+      <div class="avatar">א</div>
+    </div>
+    <div class="scroll">
+      <div class="view show" id="view-home"></div>
+      <div class="view" id="view-effort"></div>
+      <div class="view" id="view-room"><div class="room-wrap" id="room-body"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- decision overlay -->
+<div class="scrim" id="scrim">
+  <div class="decide-card">
+    <div class="dc-head"><span class="h7">ש-7</span><h2>רגע-ההכרעה · מבנה-הבית</h2><button class="x" onclick="closeDecide()">×</button></div>
+    <div class="dc-body">
+      <div class="lead">2 תובנות מבשילות (מאמץ "הסביבה הוויזואלית", חדר 3) מצביעות לאותו כיוון. ההמלצה שקופה.</div>
+      <div class="rec"><div class="rtag">★ הכיוון המומלץ</div><h3>המטרה מקומית · הבית = דשבורד</h3>
+        <ul>
+          <li>ה<b>מטרה היא תכונה של חדר/פריט</b> — לא ש-1-חוצה-גלובלי</li>
+          <li>ה<b>בית = מרכז-בקרה</b> המאגד את כל המאמצים</li>
+          <li>נוספת <b>שכבת "מאמצים"</b> מעל החדרים — מעדכן את ה-spec</li>
+        </ul>
+      </div>
+      <div class="alt">חלופה: להשאיר ש-1 כמטרה-חוצה ומאמץ-יחיד — אבל סותר את הדשבורד המאגד.</div>
+    </div>
+    <div class="dc-foot"><button class="primary" onclick="closeDecide()">אמץ + עדכן spec ←</button><button onclick="closeDecide()">עוד לא</button></div>
+  </div>
+</div>
+
+<script>
+/* ===== Real Design OS project data: efforts (boards) → each its own rooms ===== */
+const card=(lab,html)=>`<div class="rv-note"><span class="lab">${lab}</span>${html}</div>`;
+
+const EFFORTS={
+  visual:{name:'הסביבה הוויזואלית',goal:'לאפיין ולבנות את הקנבס/הבית של Design OS',badge:['בבנייה','b-decided'],progress:72,last:'אתה כאן עכשיו',active:true,
+    rooms:{
+      r2:{num:'2',name:'חקר ותקיעה',goal:'ללמוד מ-namesakes ומדפוסי-SaaS',nat:'קנבס חופשי · קרבה=יחס',badge:['תקוע','stuck'],
+        anchors:[['namesakes',2],['דפוסי-ניווט',2],['עקרון-על',1]],
+        view:`<div class="rv-canvas">
+          <div class="note" style="top:24px;right:30px">aidesign-os: 12 עקרונות (#9 "מה לא לאוטמט")</div>
+          <div class="note" style="top:30px;right:280px">g2f: דשבורד לפי-תפקיד</div>
+          <div class="note hl" style="top:140px;right:80px">"זום-בלבד מתיש" → גם ניווט-ישיר</div>
+          <div class="note" style="bottom:30px;right:40px">Figma/Slack: רף-דק + פאנל</div>
+          <div class="note" style="bottom:50px;right:300px">SaaS = ברור, לא מעורפל</div>
+        </div>`},
+      r3:{num:'3',name:'הבנה / פירוק',goal:'להחליט מה הבית צריך להיות',nat:'עץ · תובנה←מקור',badge:['מבשיל','ripen'],
+        anchors:[['המטרה מקומית',0,'ripen'],['הבית=דשבורד',0,'ripen'],['התמצאות-לפי-שכבה',0],['רמת-מאמצים',0]],
+        view:`<div class="rv-tree">
+          <div class="root">מה "הבית" של Design OS צריך להיות?</div>
+          <div class="leaf"><span class="idot"></span>המטרה <b>מקומית</b> לחדר/פריט — לא גלובלית <span class="src">↪ פידבק</span></div>
+          <div class="leaf"><span class="idot"></span>הבית = <b>דשבורד מאגד</b> (עדכונים/המשך/מבט-על) <span class="src">↪ פידבק</span></div>
+          <div class="leaf"><span class="idot" style="background:var(--accent)"></span>צריך <b>רמת-מאמצים</b> מעל החדרים <span class="src">↪ פידבק</span></div>
+          <div class="leaf"><span class="idot" style="background:var(--accent)"></span>התמצאות יציבה-גלובלית + מסתגלת-מקומית <span class="src">↪ ש-2</span></div>
+        </div>`},
+      r4:{num:'4',name:'כיוונים',goal:'לבחור צורת-סיידבר',nat:'חלופות זו-לצד-זו',badge:['נבחר','decided'],
+        anchors:[['רף-נקי',0],['דו-שכבתי',0,'ripen'],['מסתגל',0]],
+        view:`<div class="rv-dirs">
+          <div class="dir"><div class="dt">א · רף-נקי</div>יציב ופשוט, לא מתמצא בתוך חדר.</div>
+          <div class="dir win"><div class="dt">★ ב · דו-שכבתי (נבחר)</div>רף-גלובלי יציב + פאנל-הקשרי.</div>
+          <div class="dir"><div class="dt">ג · מסתגל</div>חזק, אבל זז תחתיך.</div>
+        </div>`},
+      r5:{num:'5',name:'מסכים / תוצר',goal:'שהטעימה תשדר את הסביבה בלי מוצר מלא',nat:'רשימה ליניארית',badge:['בבנייה','go'],
+        anchors:[['דשבורד-בית',0],['סיידבר דו-שכבתי',0,'ripen'],['רמת-מאמצים',0],['מבט-הכרעה',0]],
+        view:`<div class="rv-list">
+          <div class="screen"><span class="sq"></span><div><b>דשבורד-בית (מאגד מאמצים)</b><div style="font-size:11.5px;color:var(--muted)">אושר "מעולה"</div></div></div>
+          <div class="screen"><span class="sq"></span><div><b>סיידבר דו-שכבתי</b><div style="font-size:11.5px;color:var(--muted)">רף יציב + פאנל-הקשרי</div></div></div>
+          <div class="screen"><span class="sq"></span><div><b>רמת-מאמצים מעל החדרים</b><div style="font-size:11.5px;color:var(--muted)">אתה כאן עכשיו</div></div></div>
+          <div class="screen"><span class="sq"></span><div><b>מבט-הכרעה נשלף</b><div style="font-size:11.5px;color:var(--muted)">הלב → המלצה שקופה</div></div></div>
+        </div>`},
+      r6:{num:'6',name:'פידבק',goal:'לתפוס את הפידבק של אביב ולחבר חזרה',nat:'חוצה',badge:['חדש','new'],
+        anchors:[['על הטעימה',3,'new']],
+        view:`<div class="rv-list">
+          <div class="screen"><span class="sq" style="background:var(--blue-soft);border-color:#cfe0fb"></span><div><b>"קח את כל הפרויקט, לא רק הסשן"</b><div style="font-size:11.5px;color:var(--muted)">→ הוביל לרמת-המאמצים</div></div></div>
+          <div class="screen"><span class="sq" style="background:var(--blue-soft);border-color:#cfe0fb"></span><div><b>"לחשוב יותר בגדול — דשבורד"</b><div style="font-size:11.5px;color:var(--muted)">→ תובנת "הבית=דשבורד"</div></div></div>
+          <div class="screen"><span class="sq" style="background:var(--decided-soft);border-color:#bfe3df"></span><div><b>"מעולה" · "דו-שכבתי"</b><div style="font-size:11.5px;color:var(--muted)">אישורים</div></div></div>
+        </div>`}
+    }},
+  pipeline:{name:'צינור deep-spec',goal:'לאפיין מוצרים לעומק — 6 סוכנים, 3 שערי-אדם',badge:['חי','b-live'],progress:100,last:'מותקן כ-/deep-spec',
+    rooms:{
+      r3:{num:'3',name:'הבנה / פירוק',goal:'להגדיר את 6 הסוכנים והשערים',nat:'עץ',badge:['הוכרע','decided'],anchors:[['6 הסוכנים',6],['3 השערים',3]],
+        view:card('מבנה הצינור','6 סוכנים: קולט-הקשר · חופר-שאלות · מאפיין · מבקר-יריב · מברר-מטרות · חוקר-רקע. לולאת סנתז→תקוף→תקן, 3 שערי-אישור-אדם. <b>נבדק end-to-end חי.</b>')},
+      r5:{num:'5',name:'מסכים / תוצר',goal:'פקודה אחת שמריצה הכל',nat:'רשימה',badge:['חי','go'],anchors:[['/deep-spec',0],['RUN-doc',0]],
+        view:card('התוצר','סקיל <code>/deep-spec</code> מותקן ב-<code>~/.claude/skills/</code> ופעיל. מסמך-הנהג <code>RUN-deep-spec</code> = המנוע, 6 שלבים + 3 שערים.')}
+    }},
+  mapper:{name:'insight-mapper (סוכן 7)',goal:'להפיק 2-3 כיוונים-עיצוביים חלופיים מ-deep-spec',badge:['נבדק-חי','b-live'],progress:90,last:'נדחף ל-github',
+    rooms:{
+      r3:{num:'3',name:'הבנה / פירוק',goal:'מבנה הכיוון: מפה + תזה-מכוננת',nat:'עץ',badge:['הוכרע','decided'],anchors:[['מפה מקובצת',0],['תזה-מכוננת',0]],
+        view:card('הלוגיקה','כל כיוון = מפה-מלאה (אלמנטים×רמה/משמעות/סיבה/קריטריון) + <b>תזה-מכוננת</b> ברמת-הכיוון.')},
+      r5:{num:'5',name:'מסכים / תוצר',goal:'הסוכן עצמו',nat:'רשימה',badge:['נדחף','go'],anchors:[['07-insight-mapper',0]],
+        view:card('התוצר','<code>07-insight-mapper</code> — הסוכן-המייצר הראשון של שכבת-העיצוב. נדחף ל-<code>github.com/avivuiux/designos</code>.')},
+      r6:{num:'6',name:'פידבק',goal:'אימות חי',nat:'חוצה',badge:['אומת','new'],anchors:[['"הייתי משתמש"',1]],
+        view:card('פידבק','נבדק-חי ×2. אביב: <b>"הייתי משתמש"</b> (M3 ✅). ריצה-2 אימתה 3 כיוונים אמיתית-שונים.')}
+    }},
+  taskdecomp:{name:'פירוק-משימה (מתודה)',goal:'לפרק משימה לתת-משימות מובנות',badge:['spec v3','b-decided'],progress:85,last:'2 סבבי-יריב',
+    rooms:{
+      r2:{num:'2',name:'חקר ותקיעה',goal:'מקורות-קנון',nat:'קנבס',badge:['','stuck'],anchors:[['HTA',0],['זהב-כאורקל',0]],
+        view:card('חומר-גלם','HTA (Hierarchical Task Analysis) כקנון. שאלה: זהב-כאורקל מול baseline-עיוור.')},
+      r3:{num:'3',name:'הבנה / פירוק',goal:'הלוגיקה שעמדה ביריב',nat:'עץ',badge:['v3','decided'],anchors:[['baseline-עיוור',0,'ripen'],['מבחן-היפוך',0],['סיווג-ביטול',0]],
+        view:card('ההכרעות','זהב-כאורקל→<b>baseline-עיוור + לולאת-עידון</b>. מבחן-היפוך כשער. מתח שימור↔הפתעה נפתר ע"י סיווג-ביטול.')}
+    }},
+  layers:{name:'מבנה-המערכת / 7 שכבות',goal:'להגדיר את שכבות-העבודה של Design OS',badge:['הוכרע','b-decided'],progress:100,last:'spec v2',
+    rooms:{
+      r3:{num:'3',name:'הבנה / פירוק',goal:'7 שכבות-עבודה',nat:'עץ',badge:['v2','decided'],anchors:[['7 השכבות',7]],
+        view:card('התוצר','7 שכבות מהתהליך-העיצובי-הקלאסי: בריף · חקר/תקיעה · הבנה/פירוק · כיוונים · מסכים · פידבק · תצוגת-תובנות(הלב). <b>הן בדיוק החדרים בטעימה הזו.</b>')},
+      r4:{num:'4',name:'כיוונים',goal:'טופולוגיה מעורבת',nat:'חלופות',badge:['הוכרע','decided'],anchors:[['מעורבת',0]],
+        view:card('ההכרעה','טופולוגיה <b>מעורבת</b> (לא אחידה): עדשה/שכבה/חוצה + יחסים שונים. תקיעה=מצב-ערך-שיא.')}
+    }},
+  deepdesign:{name:'שכבת-העיצוב-העמוק',goal:'מגביר/שותף-חשיבה: deep-spec → מפת-תובנות-עיצוב',badge:['spec','b-ripen'],progress:80,last:'פיילוט',
+    rooms:{
+      r3:{num:'3',name:'הבנה / פירוק',goal:'הדבר-האחד',nat:'עץ',badge:['','ripen'],anchors:[['מפת-תובנות',0]],
+        view:card('הלב','פלט-deep-spec → <b>מפת-תובנות-עיצוב מובנית</b> (אלמנטים×רמה/משמעות/סיבה/קריטריון/עקיבות). מציג מרחב-איטרטיבי, מאתגר.')},
+      r4:{num:'4',name:'כיוונים',goal:'נאמנות כציר-מדידה',nat:'חלופות',badge:['','decided'],anchors:[['נאמנות',0]],
+        view:card('הכרעה','E4: נאמנות = ציר-מדידה. מיקרו/פיקסלים/טעם — מחוץ ל-scope.')}
+    }},
+  naming:{name:'נוף ושם',goal:'בידול מול namesakes + שם-מבדיל',badge:['ייחוס','b-ref'],progress:60,last:'נחקר חי',
+    rooms:{
+      r2:{num:'2',name:'חקר ותקיעה',goal:'שני namesakes',nat:'קנבס',badge:['','stuck'],anchors:[['aidesign-os',0],['g2fdesign',0]],
+        view:card('מה נמצא','aidesign-os = מסגרת-ידע. g2fdesign = case-study ארגוני. שניהם בעיקר <b>מאמתים</b> את ההחלטות שלנו.')},
+      r3:{num:'3',name:'הבנה / פירוק',goal:'הבידול',nat:'עץ',badge:['','ripen'],anchors:[['אופרטיבי',0],['מעצב-יחיד',0],['שם פתוח',0,'ripen']],
+        view:card('הבידול','לא מסגרת-ידע, לא דשבורד-ארגוני — <b>מנוע-עבודה-עמוקה + סביבה-ויזואלית למעצב-יחיד</b>. ⚠️ השם "Design OS" לא ייחודי — שם-מבדיל לפני הצגה פומבית.')}
+    }}
+};
+const ALL_ROOMS=['r1','r2','r3','r4','r5','r6','r7'];
+const ROOMNAMES={r1:'בריף',r2:'חקר ותקיעה',r3:'הבנה / פירוק',r4:'כיוונים',r5:'מסכים / תוצר',r6:'פידבק',r7:'תצוגת-תובנות'};
+
+let curEff=null, curRoom=null;
+
+/* rail efforts */
+const re=document.getElementById('rail-efforts');
+const NUM={pipeline:'◆',mapper:'◆',taskdecomp:'◆',layers:'◆',deepdesign:'◆',naming:'◆',visual:'◆'};
+Object.keys(EFFORTS).forEach(id=>{
+  const e=EFFORTS[id];
+  const stcls = e.badge[1]==='b-ripen'?'ripen':e.badge[1]==='b-new'?'new':e.badge[1]==='b-live'?'go':e.badge[1]==='b-decided'?'go':'stuck';
+  re.innerHTML+=`<div class="item" data-eff="${id}" onclick="goEffort('${id}')"><span class="ic">◆</span><span class="nm">${e.name}</span><span class="st ${stcls}"></span></div>`;
+});
+
+function setActiveRail(id){[...document.querySelectorAll('.rail .item')].forEach(i=>i.classList.toggle('active',i.dataset.eff===id));}
+function showView(v){['home','effort','room'].forEach(x=>document.getElementById('view-'+x).classList.toggle('show',x===v));}
+
+/* ===== HOME (project) ===== */
+function go(id){
+  if(id!=='home') return;
+  curEff=null;curRoom=null;
+  setActiveRail('home');
+  document.getElementById('ctx').classList.remove('show');
+  document.getElementById('crumb').innerHTML='בית';
+  document.getElementById('localgoal').style.display='none';
+  showView('home');
+}
+function renderHome(){
+  const effGrid=Object.keys(EFFORTS).map(id=>{
+    const e=EFFORTS[id];
+    return `<div class="etile ${e.active?'active':''}" onclick="goEffort('${id}')">
+      <div class="et-head"><span class="ename">${e.name}</span><span class="badge ${e.badge[1]}">${e.badge[0]}</span></div>
+      <div class="egoal">${e.goal}</div>
+      <div class="efoot"><div class="bar"><i style="width:${e.progress}%"></i></div><span>${e.progress}%</span><span>· ${e.last}</span></div>
+    </div>`;}).join('');
+  document.getElementById('view-home').innerHTML=`
+    <div class="greet"><h1>בוקר טוב, אביב 👋</h1><span class="when">7 מאמצי-עיצוב · 4 הוכרעו · 1 בבנייה · 2 חיים</span></div>
+    <div class="cols">
+      <div class="stack">
+        <section class="card resume"><div class="cb">
+          <div class="lbl">↩ המשך מאיפה שעצרת</div><h3>הסביבה הוויזואלית</h3>
+          <div class="meta">מאמץ פעיל · חדר 5 · מסכים / תוצר</div>
+          <div class="gl">🎯 <b>המטרה של המאמץ הזה:</b> לאפיין ולבנות את הקנבס/הבית של Design OS.</div>
+          <button class="go" onclick="goEffort('visual')">המשך לעבוד ←</button>
+        </div></section>
+        <section class="card"><div class="ch"><h2>מה לעשות כרגע</h2><span class="count">3</span></div><div class="cb">
+          <div class="act"><div class="ico ripen">🟠</div><div class="txt"><b>2 תובנות-spec מבשילות להכרעה</b><div class="s">הסביבה הוויזואלית · חדר 3</div></div><button class="do primary" onclick="openDecide()">בוא נכריע</button></div>
+          <div class="act"><div class="ico method">🏗️</div><div class="txt"><b>לבנות את הסביבה הוויזואלית</b><div class="s">אחרי שהכיוון (דו-שכבתי) הוכרע</div></div><button class="do" onclick="goEffort('visual')">למאמץ</button></div>
+          <div class="act"><div class="ico name">🏷️</div><div class="txt"><b>שם-מבדיל לפני הצגה פומבית</b><div class="s">נוף ושם · "Design OS" לא ייחודי</div></div><button class="do" onclick="goEffort('naming')">למאמץ</button></div>
+        </div></section>
+        <section class="card"><div class="ch"><h2>מבט-על · מאמצי-העיצוב</h2><span class="count">7</span></div><div class="cb"><div class="efforts">${effGrid}</div></div></section>
+      </div>
+      <div class="stack">
+        <section class="card"><div class="ch"><h2>עדכונים</h2></div><div class="cb feed">
+          <div class="ev"><div class="tl"><span class="d fb"></span><span class="line"></span></div><div class="ec"><b>פידבק מאביב</b><div class="s">"קח את כל הפרויקט" → נוספה רמת-מאמצים</div><div class="t">זה-עתה</div></div></div>
+          <div class="ev"><div class="tl"><span class="d done"></span><span class="line"></span></div><div class="ec"><b>צורה-ב' הוכרעה</b><div class="s">מנוע ב-IDE + סביבה ויזואלית מעליו</div><div class="t">2026-06-26</div></div></div>
+          <div class="ev"><div class="tl"><span class="d done"></span><span class="line"></span></div><div class="ec"><b>deep-spec על מבנה-המערכת</b><div class="s">→ 7 שכבות-עבודה</div><div class="t">2026-06-26</div></div></div>
+          <div class="ev"><div class="tl"><span class="d done"></span><span class="line"></span></div><div class="ec"><b>insight-mapper נדחף ל-github</b><div class="s">סוכן 7 · נבדק-חי</div><div class="t">2026-06-25</div></div></div>
+          <div class="ev"><div class="tl"><span class="d"></span></div><div class="ec"><b>README עודכן ואושר</b><div class="s">שכבת-העיצוב נכנסה</div><div class="t">2026-06-25</div></div></div>
+        </div></section>
+        <section class="card"><div class="ch"><h2>בריאות הפרויקט</h2></div><div class="cb">
+          <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">צינור-אפיון <b style="color:var(--decided)">חי</b> · שכבת-עיצוב <b style="color:var(--ripen)">בהקמה</b> · ריפו ב-github</div>
+          <div style="height:8px;border-radius:6px;background:var(--line);overflow:hidden"><div style="width:84%;height:100%;background:linear-gradient(90deg,var(--accent),#8a8af0)"></div></div>
+          <div style="font-size:11.5px;color:var(--faint);margin-top:6px">~84% — המנוע עובד; הסביבה הוויזואלית בהגדרה</div>
+        </div></section>
+      </div>
+    </div>
+    <p class="footnote"><b>שלוש רמות:</b> <code>פרויקט</code> (Design OS) → <code>מאמצי-עיצוב</code> (7, כל אחד ריצה/תחום אמיתי) → <code>7 חדרים</code> → פריטים.
+    הבית מאגד את <b>כל הפרויקט</b>. לחץ מאמץ ברף → נכנס לחדריו (הפאנל-ההקשרי). מאמצים שונים משתמשים בתת-קבוצות שונות של חדרים (שלבים-שדולגו = לגיטימי).</p>`;
+}
+
+/* ===== EFFORT ===== */
+function goEffort(eid){
+  curEff=eid;curRoom=null;
+  const e=EFFORTS[eid];
+  setActiveRail(eid);
+  renderCtx(eid,null);
+  document.getElementById('ctx').classList.add('show');
+  document.getElementById('crumb').innerHTML=`<span class="path"><b>בית</b><span class="sep">›</span>${e.name}</span>`;
+  const lg=document.getElementById('localgoal');lg.style.display='';lg.textContent='🎯 מטרת-המאמץ: '+e.goal;
+  // effort dashboard: rooms grid
+  const tiles=ALL_ROOMS.map(rid=>{
+    const r=e.rooms[rid];
+    if(!r) return `<div class="rtile skip"><div class="rt-head"><span class="rn">${rid[1]}</span><span class="rname">${ROOMNAMES[rid]}</span></div><div class="rgoal"><span class="tag">לא בשימוש במאמץ זה</span>שלב שדולג</div></div>`;
+    return `<div class="rtile" onclick="goRoom('${eid}','${rid}')"><div class="rt-head"><span class="rn">${r.num}</span><span class="rname">${r.name}</span></div><div class="rgoal"><span class="tag">מטרת-החדר</span>${r.goal}</div><div class="rfoot"><span class="cnt">${r.nat.split('·')[0]}</span><span class="badge b-${r.badge[1]==='stuck'?'stuck':r.badge[1]==='ripen'?'ripen':r.badge[1]==='new'?'new':'decided'}">${r.badge[0]||'—'}</span></div></div>`;
+  }).join('');
+  document.getElementById('view-effort').innerHTML=`
+    <div class="greet"><h1>${e.name}</h1><span class="when">מאמץ-עיצוב · ${e.progress}% · ${e.last}</span></div>
+    <section class="card"><div class="ch"><h2>חדרי-העבודה במאמץ זה</h2></div><div class="cb"><div class="rooms">${tiles}</div></div></section>
+    <p class="footnote">כל חדר נפתח בתצוגה-הטבעית שלו (קנבס/עץ/חלופות/רשימה). חדרים-מעומעמים = שלבים שמאמץ זה דילג עליהם. הפאנל-משמאל מאפשר קפיצה ישירה.</p>`;
+  showView('effort');
+}
+
+/* ===== ROOM ===== */
+function goRoom(eid,rid){
+  curEff=eid;curRoom=rid;
+  const e=EFFORTS[eid],r=e.rooms[rid];
+  setActiveRail(eid);
+  renderCtx(eid,rid);
+  document.getElementById('crumb').innerHTML=`<span class="path"><b>בית</b><span class="sep">›</span><span style="cursor:pointer" onclick="goEffort('${eid}')">${e.name}</span><span class="sep">›</span>חדר ${r.num} · ${r.name}</span>`;
+  const lg=document.getElementById('localgoal');lg.style.display='';lg.textContent='🎯 מטרת-החדר: '+r.goal;
+  document.getElementById('room-body').innerHTML=r.view;
+  showView('room');
+}
+
+/* contextual panel: the effort's rooms (+ anchors of current room) */
+function renderCtx(eid,rid){
+  const e=EFFORTS[eid];
+  let html=`<div class="cxh"><span class="back" onclick="go('home')">← כל המאמצים</span><h3>${e.name}</h3><div class="nat">${Object.keys(e.rooms).length} חדרים פעילים</div></div><div class="cxsec">חדרי-המאמץ</div>`;
+  ALL_ROOMS.forEach(id=>{
+    const r=e.rooms[id]; if(!r) return;
+    const stcls=r.badge[1]==='ripen'?'ripen':r.badge[1]==='new'?'new':r.badge[1]==='stuck'?'stuck':'go';
+    html+=`<div class="ritem ${rid===id?'active':''}" onclick="goRoom('${eid}','${id}')"><span class="rn">${r.num}</span>${r.name}<span class="st ${stcls}"></span></div>`;
+    if(rid===id){
+      (r.anchors||[]).forEach(a=>html+=`<div class="anchor"><span class="dot ${a[2]||''}"></span>${a[0]}</div>`);
+    }
+  });
+  document.getElementById('ctx').innerHTML=html;
+}
+
+const scrim=document.getElementById('scrim');
+function openDecide(){scrim.classList.add('open')}
+function closeDecide(){scrim.classList.remove('open')}
+scrim.addEventListener('click',e=>{if(e.target===scrim)closeDecide()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDecide()});
+
+renderHome();
+</script>
+</body>
+</html>
