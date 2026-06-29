@@ -84,6 +84,8 @@ The first producer agent is already built and validated across two live runs: `i
 
 Generating the visual work itself - the design-execution stage - comes after that. It feels necessary, but it's deliberately not first. Above it all sits adaptive method-routing: the right process for the problem (a gestalt-critic is one small skill here, not the headline). The discipline throughout is **depth before breadth** - excellent at one thing first, then widen.
 
+Who it's for: **product designers on a team** - the ones who, in a review or a handoff, have to show fast *why* each choice was made. That's the market I'm building it for. I'm its first user.
+
 ---
 
 **In one line:** *I systematized the part of my own work I was worst at. The result is a multi-agent system that learns any product from its source, keeps a human at the controls, and produces a spec you'd hand to a real client - and it runs. The proof is in `runs/`.*
